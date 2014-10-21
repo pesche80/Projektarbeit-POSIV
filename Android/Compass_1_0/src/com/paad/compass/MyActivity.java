@@ -18,9 +18,7 @@ public class MyActivity extends Activity {
 	
 	private float roll = 0;
 	private float pitch = 0;
-	private float pitch_r = 0;
 	private float yaw = 0;
-	
 	private double[] phiTheta_a;
 	private double[] phiThetaPsi;
 	
@@ -32,8 +30,6 @@ public class MyActivity extends Activity {
 	private static final float NS2S = 1.0f / 1000000000.0f; // Umrechnung nsec
 															// in sec
 	float dT = 0; // Zeitänderung
-	
-	private final double g = SensorManager.STANDARD_GRAVITY;	// Gravitationskonstante
 	
 	// eintragen eines Sensor-Event-Listener
 	private final SensorEventListener sensorEventListener = new SensorEventListener() {
@@ -57,7 +53,7 @@ public class MyActivity extends Activity {
 			// Beschleunigungsdaten auslesen
 			double fx = aValues[0];
 			double fy = aValues[1];
-			double fz = aValues[2];
+			// double fz = aValues[2];
 
 			// Drehwinkel auslesen
 			double p = gValues[0];
@@ -66,14 +62,13 @@ public class MyActivity extends Activity {
 
 			// Berechnung der Haltung
 
-			float pi = 3.14f;
-			
 			CalcAndFilterData eAccel = new CalcAndFilterData();
 			phiTheta_a = eAccel.EulerAccel(fx, fy);
 			phiThetaPsi = eAccel.EulerEKF(p, q, r, dT);
 			
-			pitch = (float)Math.toDegrees(phiTheta_a[0]);
-			roll = (float)Math.toDegrees(phiTheta_a[1]);
+			pitch = (float)Math.toDegrees(phiThetaPsi[0]);
+			roll = (float)Math.toDegrees(phiThetaPsi[1]);
+			yaw = (float)Math.toDegrees(phiThetaPsi[2]);
 			
 			
 //			pitch_r = (float)Math.asin (fy / g);
@@ -82,6 +77,7 @@ public class MyActivity extends Activity {
 //			
 			cv.setPitch(pitch);
 			cv.setRoll(roll);
+			
 			
 			//cv.invalidate();
 			cv.invalidate();

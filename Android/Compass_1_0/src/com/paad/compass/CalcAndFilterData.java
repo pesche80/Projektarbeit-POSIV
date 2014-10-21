@@ -4,32 +4,17 @@ package com.paad.compass;
 
 
 
-import android.app.Activity;
-import android.content.Context;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.os.Bundle;
-
-import org.ejml.data.DenseMatrix64F;
 import org.ejml.simple.SimpleMatrix;
+
+import android.hardware.SensorManager;
 
 
 public class CalcAndFilterData {
 	
 	private double fx;
 	private double fy;
-	private double fz;
-	private double p;
-	private double q;
-	private double r;
 	private double phi_a;
 	private double theta_a;
-	private double phi;
-	private double theta;
-	private double psi;
-	
 	// define and initialize Matrix Objects with start values
 	SimpleMatrix H = new SimpleMatrix(2, 3, true, new double[]{
 				1, 0, 0,
@@ -73,8 +58,8 @@ public class CalcAndFilterData {
 		fx = _fx;
 		fy = _fy;
 		
-		phi_a = Math.asin(fy / G);
-		theta_a = Math.asin(-fx / (G*Math.cos(phiTheta_a[0])));
+		theta_a = Math.asin(fx / G);
+		phi_a = Math.asin(-fy / (G*Math.cos(phiTheta_a[0])));
 		
 		phiTheta_a[0] = phi_a;
 		phiTheta_a[1] = theta_a;
@@ -94,16 +79,79 @@ public class CalcAndFilterData {
 	 */
 	public double[] EulerEKF(double p, double q, double r, double dt){
 		double[] phiThetaPsi = new double[3];
-		double[][] a = aJacob(x, p, q, r, dt);
+		SimpleMatrix z = new SimpleMatrix(2, 1, true, new double[] {
+			phi_a,
+			theta_a
+		});
+		SimpleMatrix a = aJacob(x, p, q, r, dt);
+		SimpleMatrix xp = fx(x, p, q, r, dt);
 		
+		SimpleMatrix pP = xp.mult(P).mult(a.transpose());
 		
-		// TODO: Kalman Filter
+		SimpleMatrix K = pP.mult(H.transpose()) .mult(((H.mult(pP).mult(H.transpose())).plus(R)).invert());
 		
-		phiThetaPsi[0] = phi;
-		phiThetaPsi[1] = theta;
-		phiThetaPsi[2] = psi;
+		x = xp.plus(K).mult(z.minus(H.mult(xp)));
+		
+		P = pP.minus(K.mult(H).mult(pP));
+		
+		phiThetaPsi[0] = x.get(0, 0);
+		phiThetaPsi[1] = x.get(1, 0);
+		phiThetaPsi[2] = x.get(2, 0);
 		
 		return phiThetaPsi;
+	}
+
+	/**
+	 * 
+	 * @param x2
+	 * @param p2
+	 * @param q2
+	 * @param r2
+	 * @param dt
+	 * @return
+	 */
+	private SimpleMatrix fx(SimpleMatrix xHat, double p2, double q2, double r2, double dt) {
+		SimpleMatrix xp = new SimpleMatrix(3, 1, true, new double[] {
+				0,
+				0,
+				0
+		});
+		
+		SimpleMatrix xDot = new SimpleMatrix(3, 1, true, new double[] {
+				0,
+				0,
+				0
+		});
+		
+		SimpleMatrix dtMat = new SimpleMatrix(3, 3, true, new double[] {
+				dt,	dt,	dt,
+				dt,	dt,	dt,
+				dt,	dt,	dt
+		});
+		
+		double phi2 = xHat.get(0, 0);
+		double theta2 = xHat.get(1, 0);
+		
+		double value = 0;
+		
+		value = p2 + q2 * Math.sin(phi2) * Math.tan(theta2) +
+							r2 * Math.cos(phi2) * Math.tan(theta2);
+		xDot.set(0, 0, value);
+		
+		
+		value = q2 * Math.cos(phi2) -
+							r2 * Math.sin(phi2);
+		xDot.set(1, 0, value);
+		
+		
+		value = q2 * Math.sin(phi2) * (1/ Math.cos(theta2)) +
+							r2 * Math.cos(phi2) * (1/ Math.cos(theta2));
+		xDot.set(2, 0, value);
+		
+		
+		xp = xHat.plus(xDot.mult(dtMat));
+		
+		return xp;
 	}
 
 	/**
@@ -116,16 +164,21 @@ public class CalcAndFilterData {
 	 * @return
 	 */
 	private SimpleMatrix aJacob(SimpleMatrix xHat, double p2, double q2, double r2, double dt) {
-		//double[][] a = new double[][]{{0, 0, 0},{0, 0, 0},{0, 0, 0}};
+		// reads phi and theta out of matrix
 		double phi2 = xHat.get(0, 0);
 		double theta2 = xHat.get(1, 0);
+		
+		// value to fill a matrix
 		double value = 0;
+		
+		// a matrix
 		SimpleMatrix a = new SimpleMatrix(3, 3, true, new double[]{
 				0,	0,	0,
 				0,	0,	0,
 				0,	0,	0
 		});
 		
+		// 3x3 matrix filled with dT
 		SimpleMatrix dtMat = new SimpleMatrix(3, 3, true, new double[] {
 				dt,	dt,	dt,
 				dt,	dt,	dt,
@@ -133,6 +186,7 @@ public class CalcAndFilterData {
 		});
 		
 		
+		// calculation implemented according to book
 		value = q2 * Math.cos(phi2) * Math.tan(theta2) -
 							r2 * Math.sin(phi2) * Math.tan(theta2);
 		a.set(0, 0, value);
@@ -165,10 +219,13 @@ public class CalcAndFilterData {
 		
 		a.set(2, 2, 0);
 		
+		// a = eye(3) + a*dt
 		a = SimpleMatrix.identity(3).plus(a.mult(dtMat));
 		
 		return a;
 	}
+	
+	
 	
 
 
