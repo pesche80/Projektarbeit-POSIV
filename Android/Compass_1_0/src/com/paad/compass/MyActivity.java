@@ -9,6 +9,8 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 
 
+
+
 public class MyActivity extends Activity {
 	
 	private SensorManager sensorManager;
@@ -18,6 +20,9 @@ public class MyActivity extends Activity {
 	private float pitch = 0;
 	private float pitch_r = 0;
 	private float yaw = 0;
+	
+	private double[] phiTheta_a;
+	private double[] phiThetaPsi;
 	
 	private CompassView cv;
 	
@@ -63,10 +68,18 @@ public class MyActivity extends Activity {
 
 			float pi = 3.14f;
 			
-			pitch_r = (float)Math.asin (fy / g);
-			pitch = -((360/(2*pi)) * pitch_r);
-			roll = ((360/(2*pi)) * (float) Math.asin (-fx / (g*Math.cos(pitch_r))));
+			CalcAndFilterData eAccel = new CalcAndFilterData();
+			phiTheta_a = eAccel.EulerAccel(fx, fy);
+			phiThetaPsi = eAccel.EulerEKF(p, q, r, dT);
 			
+			pitch = (float)Math.toDegrees(phiTheta_a[0]);
+			roll = (float)Math.toDegrees(phiTheta_a[1]);
+			
+			
+//			pitch_r = (float)Math.asin (fy / g);
+//			pitch = -((360/(2*pi)) * pitch_r);
+//			roll = ((360/(2*pi)) * (float) Math.asin (-fx / (g*Math.cos(pitch_r))));
+//			
 			cv.setPitch(pitch);
 			cv.setRoll(roll);
 			
