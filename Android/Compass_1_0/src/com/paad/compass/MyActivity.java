@@ -77,7 +77,7 @@ public class MyActivity extends Activity {
 //			
 			cv.setPitch(pitch);
 			cv.setRoll(roll);
-			
+			cv.setBearing(yaw);
 			
 			//cv.invalidate();
 			cv.invalidate();
